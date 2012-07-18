@@ -23,6 +23,7 @@
 #include "terrainbrush.h"
 
 #include "brushitem.h"
+#include "geometry.h"
 #include "map.h"
 #include "mapdocument.h"
 #include "mapscene.h"
@@ -59,53 +60,6 @@ TerrainBrush::~TerrainBrush()
 {
 }
 
-
-/**
- * Returns the lists of points on a line from (x0,y0) to (x1,y1).
- *
- * This is an implementation of bresenhams line algorithm, initially copied
- * from http://en.wikipedia.org/wiki/Bresenham's_line_algorithm#Optimization
- * changed to C++ syntax.
- */
-static QVector<QPoint> calculateLine(int x0, int y0, int x1, int y1)
-{
-    QVector<QPoint> ret;
-
-    bool steep = qAbs(y1 - y0) > qAbs(x1 - x0);
-    if (steep) {
-        qSwap(x0, y0);
-        qSwap(x1, y1);
-    }
-    if (x0 > x1) {
-        qSwap(x0, x1);
-        qSwap(y0, y1);
-    }
-    const int deltax = x1 - x0;
-    const int deltay = qAbs(y1 - y0);
-    int error = deltax / 2;
-    int ystep;
-    int y = y0;
-
-    if (y0 < y1)
-        ystep = 1;
-    else
-        ystep = -1;
-
-    for (int x = x0; x < x1 + 1 ; x++) {
-        if (steep)
-            ret += QPoint(y, x);
-        else
-            ret += QPoint(x, y);
-        error = error - deltay;
-        if (error < 0) {
-             y = y + ystep;
-             error = error + deltax;
-        }
-    }
-
-    return ret;
-}
-
 void TerrainBrush::tilePositionChanged(const QPoint &pos)
 {
     switch (mBrushBehavior) {
@@ -113,7 +67,7 @@ void TerrainBrush::tilePositionChanged(const QPoint &pos)
     {
         int x = mPaintX;
         int y = mPaintY;
-        foreach (const QPoint &p, calculateLine(x, y, pos.x(), pos.y())) {
+        foreach (const QPoint &p, pointsOnLine(x, y, pos.x(), pos.y())) {
             updateBrush(p);
             doPaint(true, p.x(), p.y());
         }
@@ -124,7 +78,8 @@ void TerrainBrush::tilePositionChanged(const QPoint &pos)
     }
     case LineStartSet:
     {
-        QVector<QPoint> lineList = calculateLine(mLineReferenceX, mLineReferenceY, pos.x(), pos.y());
+        QVector<QPoint> lineList = pointsOnLine(mLineReferenceX, mLineReferenceY,
+                                                pos.x(), pos.y());
         updateBrush(pos, &lineList);
         break;
     }
@@ -186,6 +141,7 @@ void TerrainBrush::modifiersChanged(Qt::KeyboardModifiers modifiers)
         mBrushBehavior = Free;
     }
 
+    setBrushMode((modifiers & Qt::ControlModifier) ? PaintVertex : PaintTile);
     updateBrush(tilePosition());
 }
 
@@ -195,24 +151,28 @@ void TerrainBrush::languageChanged()
     setShortcut(QKeySequence(tr("T")));
 }
 
+static Terrain *firstTerrain(MapDocument *mapDocument)
+{
+    if (!mapDocument)
+        return 0;
+
+    foreach (Tileset *tileset, mapDocument->map()->tilesets())
+        if (tileset->terrainCount() > 0)
+            return tileset->terrain(0);
+
+    return 0;
+}
+
 void TerrainBrush::mapDocumentChanged(MapDocument *oldDocument,
-                                    MapDocument *newDocument)
+                                      MapDocument *newDocument)
 {
     AbstractTileTool::mapDocumentChanged(oldDocument, newDocument);
 
     // Reset the brush, since it probably became invalid
-    brushItem()->setTileRegion(QRegion());
+    brushItem()->setTileLayer(0);
 
-    // if the new document has any terrains defined, choose the first rather than the 'none' terrain
-    if (newDocument) {
-        Tileset *tileset = newDocument->map()->tilesets().at(0);
-        if (tileset && tileset->terrainCount() > 0)
-            setTerrain(tileset->terrain(0));
-        else
-            setTerrain(NULL);
-    } else {
-        mTerrain = NULL;
-    }
+    // Don't use setTerrain since we do not want to update the brush right now
+    mTerrain = firstTerrain(newDocument);
 }
 
 void TerrainBrush::setTerrain(const Terrain *terrain)
