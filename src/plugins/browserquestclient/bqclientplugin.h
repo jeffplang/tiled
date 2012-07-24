@@ -1,7 +1,6 @@
 /*
- * JSON Tiled Plugin
- * Copyright 2011, Porfírio José Pereira Ribeiro <porfirioribeiro@gmail.com>
- * Copyright 2011, Thorbjørn Lindeijer <thorbjorn@lindeijer.nl>
+ * BrowserQuest Client Tiled Plugin
+ * Copyright 2012, Jeff Lang <jeffplang@gmail.com>
  *
  * This file is part of Tiled.
  *
@@ -25,7 +24,6 @@
 #include "bqclient_global.h"
 
 #include "mapwriterinterface.h"
-#include "mapreaderinterface.h"
 
 #include <QObject>
 
@@ -37,18 +35,13 @@ namespace BQClient {
 
 class BQCLIENTSHARED_EXPORT BQClientPlugin
         : public QObject
-        , public Tiled::MapReaderInterface
         , public Tiled::MapWriterInterface
 {
     Q_OBJECT
-    Q_INTERFACES(Tiled::MapReaderInterface Tiled::MapWriterInterface)
+    Q_INTERFACES(Tiled::MapWriterInterface)
 
 public:
     BQClientPlugin();
-
-    // MapReaderInterface
-    Tiled::Map *read(const QString &fileName);
-    bool supportsFile(const QString &fileName) const;
 
     // MapWriterInterface
     bool write(const Tiled::Map *map, const QString &fileName);

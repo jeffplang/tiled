@@ -37,33 +37,6 @@ BQClientPlugin::BQClientPlugin()
 {
 }
 
-Tiled::Map *BQClientPlugin::read(const QString &fileName)
-{
-    QFile file(fileName);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        mError = tr("Could not open file for reading.");
-        return 0;
-    }
-
-    JsonReader reader;
-    reader.parse(file.readAll());
-
-    const QVariant variant = reader.result();
-
-    if (!variant.isValid()) {
-        mError = tr("Error parsing file.");
-        return 0;
-    }
-
-    VariantToMapConverter converter;
-    Tiled::Map *map = converter.toMap(variant, QFileInfo(fileName).dir());
-
-    if (!map)
-        mError = converter.errorString();
-
-    return map;
-}
-
 bool BQClientPlugin::write(const Tiled::Map *map, const QString &fileName)
 {
     QFile file(fileName);
@@ -113,11 +86,6 @@ bool BQClientPlugin::write(const Tiled::Map *map, const QString &fileName)
 QString BQClientPlugin::nameFilter() const
 {
     return tr("BrowserQuest client files (*.json)");
-}
-
-bool BQClientPlugin::supportsFile(const QString &fileName) const
-{
-    return fileName.endsWith(QLatin1String(".json"), Qt::CaseInsensitive);
 }
 
 QString BQClientPlugin::errorString() const
